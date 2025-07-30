@@ -5,7 +5,7 @@
 import UIKit
 
 // The Task model
-struct Task {
+struct Task: Codable {
 
     // The task's title
     var title: String
@@ -50,27 +50,53 @@ struct Task {
     private(set) var id: String = UUID().uuidString
 }
 
-// MARK: - Task + UserDefaults
 extension Task {
 
+    // A static key to use for saving and retrieving tasks from UserDefaults
+    private static let tasksKey = "tasks"
 
     // Given an array of tasks, encodes them to data and saves to UserDefaults.
     static func save(_ tasks: [Task]) {
-
-        // TODO: Save the array of tasks
+        let encoder = JSONEncoder()
+        do {
+            let encodedTasks = try encoder.encode(tasks)
+            UserDefaults.standard.set(encodedTasks, forKey: tasksKey)
+        } catch {
+            print("Error encoding tasks: \(error.localizedDescription)")
+        }
     }
 
     // Retrieve an array of saved tasks from UserDefaults.
     static func getTasks() -> [Task] {
-        
-        // TODO: Get the array of saved tasks from UserDefaults
-
-        return [] // 👈 replace with returned saved tasks
+        guard let savedTasksData = UserDefaults.standard.data(forKey: tasksKey) else {
+            return []
+        }
+        let decoder = JSONDecoder()
+        do {
+            let decodedTasks = try decoder.decode([Task].self, from: savedTasksData)
+            return decodedTasks
+        } catch {
+            print("Error decoding tasks: \(error.localizedDescription)")
+            return []
+        }
     }
 
     // Add a new task or update an existing task with the current task.
     func save() {
+        // 1. Get the array of saved tasks
+        var tasks = Task.getTasks()
 
-        // TODO: Save the current task
+        // 2. Check if the current task already exists
+        if let index = tasks.firstIndex(where: { $0.id == self.id }) {
+            // If it exists, remove the old one and insert the updated one
+            tasks.remove(at: index)
+            tasks.insert(self, at: index)
+        } else {
+            // Otherwise, append the new task
+            tasks.append(self)
+        }
+
+        // 4. Save the updated tasks array
+        Task.save(tasks)
     }
 }
